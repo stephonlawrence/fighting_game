@@ -1,5 +1,6 @@
 from random import randint
-from Entity import Entity
+import sys
+from ecs.Entity import Entity
 import json
 class Component(object):
   __slots__ = ['entity', 'defaults', 'properties']
@@ -52,13 +53,4 @@ class Damage(Component):
     if crit:
       damage = self.critical
     return damage
-
-if __name__ == "__main__":
-  player = Entity('player')
-  player.damage = Damage(player, normal=15, critical=25)
-  player.damage()
-  player.health = Health(player)
-  print(player.health)
-  player.health.current -= player.damage()
-  print(player.health)
 
