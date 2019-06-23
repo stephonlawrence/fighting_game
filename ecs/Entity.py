@@ -1,4 +1,6 @@
 from uuid import uuid4, UUID
+# import ecs
+
 
 class Entity(object):
   """
@@ -53,21 +55,22 @@ class Entity(object):
   
   def __setattr__(self, key, value):
     ''' e.key = value '''
+    Component = __import__("ecs.Component").Component
     if key in super(Entity, self).__getattribute__('__slots__'):
       super(Entity, self).__setattr__(key, value)
     else:
+      if isinstance(value, Component):
+        v: Component = value
+        vCatalog = v.__class__.ComponentCatalog
+        if v.entity is None:
+          v.entity = self
+          for entity, comp in vCatalog.items():
+            if comp == v:
+              if self not in vCatalog:
+                vCatalog.pop(entity)
+                for relationship_name, component in entity.components:
+                  if component == value:
+                    entity.components.pop(relationship_name)
+                    break
+              vCatalog[self] = v
       self.components[key] = value
-
-
-if __name__ == "__main__":
-  e = Entity("player")
-  print(repr(e))
-  print(e)
-  e.health = 1
-  print(e.health)
-  print(e['health'])
-  e.damage = 2
-  e.prefix = 'well then'
-  print(e.prefix)
-  print(repr(e))
-  print(e)

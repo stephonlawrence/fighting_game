@@ -1,22 +1,50 @@
 from random import randint
 import sys
-from ecs.Entity import Entity
+import ecs
 import json
-class Component(object):
-  __slots__ = ['entity', 'defaults', 'properties']
 
-  def __init__(self, entity: Entity, **properties):
+class Component(object):
+  __slots__ = ['entity', 'defaults']
+  # defaults = dict()
+  ComponentCatalog = dict()
+  ComponentTypes = dict()
+
+  def __new__(cls, entity=None, **properties):
+    cname = cls.__name__
+    print("cname", cname)
+    if cname not in Component.ComponentTypes:
+      Component.ComponentTypes[cname] = cls
+      cls.ComponentCatalog = dict()
+    if entity not in cls.ComponentCatalog:
+      cls.ComponentCatalog[entity]
+      component = Component.__new__(cls, entity=entity, **properties)
+      # component = super(Component, cls).__new__(cls, entity=entity, **properties)
+    else:
+      component = cls.ComponentCatalog(entity)
+    return component
+
+  def __init__(self, entity: ecs.Entity=None, **properties):
     self.entity = entity
-    self.properties = dict(self.defaults)
-    
-    for key, value in properties.items():
-      self.properties[key] = value
+
+    for propery, value in self.defaults.items():
+      setattr(self, propery, properties.get(propery, value))
     
 
   def __repr__(self):
     ''' <Component entity_id> '''
     cname = self.__class__.__name__
-    return '<{} {}>'.format(cname, self.entity.uid)
+    ename = ''
+    if self.entity:
+      for propery, component in self.entity.components.items():
+        if component == self:
+          ename = ' entity:{}.{}'.format(self.entity.name, propery)
+    return '<{}{}>'.format(cname, ename)
+
+  def __getitem__(self, key):
+    return getattr(self, key)
+
+  def __setitem__(self, key, value):
+    return setattr(self, key, value)
 
   def __getattr__(self, key):
     if key in super(Component, self).__getattribute__('__slots__'):
@@ -31,26 +59,15 @@ class Component(object):
 
   def __str__(self):
     ''' json of properties '''
-    return json.dumps(self.properties)
-
-class Health(Component):
-  defaults = dict([('current', 100), ('max', 100)])
-
-  @property
-  def alive(self):
-    return self.current > 0
-
-class Damage(Component):
-  defaults = dict([('normal', 10), ('critical', 15), ('critical_percent', 10)])
-
-  def __call__(self):
-    '''
-    returns a damage calculation based on the properties of the component
-    
-    '''
-    crit = randint(0, 99) <= (self.critical_percent - 1)
-    damage = self.normal
-    if crit:
-      damage = self.critical
-    return damage
+    keys = self.defaults.keys()
+    data = dict()
+    for key in keys:
+      if key != 'defaults':
+        data[key] = getattr(self, key)
+    # strip off extra white space
+    json_string = '\n'.join([line.rstrip() for line in json.dumps(data, indent=4)]).split('\n')
+    return json_string
+  def restart(self):
+    for prop, value in self.defaults.items():
+      setattr(self, prop, value)
 
